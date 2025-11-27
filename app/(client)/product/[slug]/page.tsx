@@ -4,7 +4,7 @@ import FavoriteButton from "@/components/FavouriteButton";
 import ImageView from "@/components/ImageView";
 import PriceView from "@/components/PriceView";
 import ProductChar from "@/components/ProductChar";
-import UploadImageSection from "@/components/UploadImageSection";
+
 import { getProductBySlug } from "@/sanity/queries";
 import { CornerDownLeft, StarIcon, Truck } from "lucide-react";
 import Link from "next/link";

@@ -5,10 +5,11 @@ import {
   BRANDS_QUERY,
   DEAL_PRODUCTS,
   GET_ALL_BLOG,
-  
+  LATEST_BLOG_QUERY,
   MY_ORDERS_QUERY,
   OTHERS_BLOG_QUERY,
   PRODUCT_BY_SLUG_QUERY,
+  SINGLE_BLOG_QUERY,
   
 } from "./query";
 
@@ -36,6 +37,15 @@ const getCategories = async (quantity?: number) => {
 
 
 
+const getLatestBlogs = async () => {
+  try {
+    const { data } = await sanityFetch({ query: LATEST_BLOG_QUERY });
+    return data ?? [];
+  } catch (error) {
+    console.log("Error fetching latest Blogs:", error);
+    return [];
+  }
+};
 const getDealProducts = async () => {
   try {
     const { data } = await sanityFetch({ query: DEAL_PRODUCTS });
@@ -98,7 +108,18 @@ const getAllBlogs = async (quantity: number) => {
   }
 };
 
-
+const getSingleBlog = async (slug: string) => {
+  try {
+    const { data } = await sanityFetch({
+      query: SINGLE_BLOG_QUERY,
+      params: { slug },
+    });
+    return data ?? [];
+  } catch (error) {
+    console.log("Error fetching all brands:", error);
+    return [];
+  }
+};
 const getBlogCategories = async () => {
   try {
     const { data } = await sanityFetch({
@@ -126,13 +147,13 @@ const getOthersBlog = async (slug: string, quantity: number) => {
 export {
   getCategories,
   
-  
+  getLatestBlogs,
   getDealProducts,
   getProductBySlug,
   getBrand,
   getMyOrders,
   getAllBlogs,
-  
+  getSingleBlog,
   getBlogCategories,
   getOthersBlog,
 };
