@@ -161,8 +161,6 @@ export type Blog = {
   }>;
 };
 
-
-
 export type Author = {
   _id: string;
   _type: "author";
