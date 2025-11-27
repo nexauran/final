@@ -1,6 +1,6 @@
 import Container from "@/components/Container";
 import Title from "@/components/Title";
-import { SINGLE_BLOG_QUERY } from "@/sanity.types";
+import { SINGLE_BLOG_QUERYResult } from "@/sanity.types";
 import { urlFor } from "@/sanity/lib/image";
 import {
   getBlogCategories,
@@ -21,7 +21,7 @@ const SingleBlogPage = async ({
   params: Promise<{ slug: string }>;
 }) => {
   const { slug } = await params;
-  const blog: SINGLE_BLOG_QUERY = await getSingleBlog(slug);
+  const blog: SINGLE_BLOG_QUERYResult = await getSingleBlog(slug);
   if (!blog) return notFound();
 
   return (
@@ -29,7 +29,7 @@ const SingleBlogPage = async ({
       <Container className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         <div className="md:col-span-3">
           {blog?.mainImage && (
-            <img
+            <Image
               src={urlFor(blog?.mainImage).url()}
               alt={blog.title || "Blog Image"}
               width={800}
@@ -94,7 +94,7 @@ const SingleBlogPage = async ({
                         },
                         types: {
                           image: ({ value }) => (
-                            <img
+                            <Image
                               alt={value.alt || ""}
                               src={urlFor(value).width(2000).url()}
                               className="w-full rounded-2xl"
@@ -221,7 +221,7 @@ const BlogLeft = async ({ slug }: { slug: string }) => {
               className="flex items-center gap-2 group"
             >
               {blog?.mainImage && (
-                <img
+                <Image
                   src={urlFor(blog?.mainImage).url()}
                   alt="blogImage"
                   width={100}
