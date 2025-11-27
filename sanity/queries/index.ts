@@ -5,7 +5,7 @@ import {
   BRANDS_QUERY,
   DEAL_PRODUCTS,
   GET_ALL_BLOG,
-  LATEST_BLOG_QUERY,
+  
   MY_ORDERS_QUERY,
   OTHERS_BLOG_QUERY,
   PRODUCT_BY_SLUG_QUERY,
@@ -36,15 +36,6 @@ const getCategories = async (quantity?: number) => {
 
 
 
-const getLatestBlogs = async () => {
-  try {
-    const { data } = await sanityFetch({ query: LATEST_BLOG_QUERY });
-    return data ?? [];
-  } catch (error) {
-    console.log("Error fetching latest Blogs:", error);
-    return [];
-  }
-};
 const getDealProducts = async () => {
   try {
     const { data } = await sanityFetch({ query: DEAL_PRODUCTS });
@@ -135,7 +126,7 @@ const getOthersBlog = async (slug: string, quantity: number) => {
 export {
   getCategories,
   
-  getLatestBlogs,
+  
   getDealProducts,
   getProductBySlug,
   getBrand,
