@@ -34,15 +34,7 @@ const getCategories = async (quantity?: number) => {
   }
 };
 
-const getAllBrands = async () => {
-  try {
-    const { data } = await sanityFetch({ query: BRANDS_QUERY });
-    return data ?? [];
-  } catch (error) {
-    console.log("Error fetching all brands:", error);
-    return [];
-  }
-};
+
 
 const getLatestBlogs = async () => {
   try {
@@ -153,7 +145,7 @@ const getOthersBlog = async (slug: string, quantity: number) => {
 };
 export {
   getCategories,
-  getAllBrands,
+  
   getLatestBlogs,
   getDealProducts,
   getProductBySlug,
