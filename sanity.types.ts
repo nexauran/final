@@ -344,10 +344,12 @@ export type Category = {
   _updatedAt: string;
   _rev: string;
   title?: string;
+  productCount:number;
   slug?: Slug;
   description?: string;
   range?: number;
   featured?: boolean;
+  
   image?: {
     asset?: {
       _ref: string;

@@ -24,6 +24,29 @@ interface OrderDetailsDialogProps {
 
 const WHATSAPP_PHONE = "917306328115"; // Your WhatsApp Number (No +, No Spaces)
 
+/**
+ * Local shape for the product item we expect from Sanity.
+ * Adjust fields if your sanity schema has different shapes.
+ */
+type Slug = { current?: string } | undefined;
+
+interface ProductImage {
+  // Minimal shape to pass into urlFor. If your images have other properties add them here.
+  _type?: string;
+  asset?: any;
+  // You may add hotspot/crop if you use them
+  // hotspot?: any;
+  // crop?: any;
+}
+
+interface ProductItem {
+  images?: ProductImage[] | null;
+  name?: string | null;
+  slug?: Slug | null;
+  price?: number | string | null;
+  // any other fields you expect can be added here
+}
+
 const OrderDetailDialog: React.FC<OrderDetailsDialogProps> = ({
   order,
   isOpen,
@@ -31,7 +54,7 @@ const OrderDetailDialog: React.FC<OrderDetailsDialogProps> = ({
 }) => {
   if (!order) return null;
 
-  // 🔥 Build WhatsApp message dynamically (unchanged)
+  // 🔥 Build WhatsApp message dynamically
   const buildWhatsAppMessage = useCallback(() => {
     const orderId = order.orderNumber ?? order._id ?? "Unknown";
 
@@ -43,12 +66,12 @@ const OrderDetailDialog: React.FC<OrderDetailsDialogProps> = ({
     const items =
       order.products
         ?.map((p) => {
-          const name = p?.product?.name ?? "Item";
+          const name = (p?.product as ProductItem)?.name ?? "Item";
           const qty = p?.quantity ?? 1;
           const priceValue =
-            typeof p?.product?.price === "number"
-              ? p.product.price.toFixed(2)
-              : String(p?.product?.price ?? "N/A");
+            typeof (p?.product as ProductItem)?.price === "number"
+              ? ((p?.product as ProductItem)?.price as number).toFixed(2)
+              : String((p?.product as ProductItem)?.price ?? "N/A");
           return `${name} x${qty} (${priceValue})`;
         })
         .join(", ") || "No items";
@@ -62,7 +85,7 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
     return encodeURIComponent(message);
   }, [order]);
 
-  // 🔥 WhatsApp button action (unchanged)
+  // 🔥 WhatsApp button action
   const handleWhatsAppClick = useCallback(() => {
     const url = `https://wa.me/${WHATSAPP_PHONE}?text=${buildWhatsAppMessage()}`;
     window.open(url, "_blank", "noopener");
@@ -82,7 +105,9 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
                   {order.orderNumber ?? order._id}
                 </span>
               </DialogTitle>
-              <p className="text-sm text-gray-500 mt-1">{order.customerName ?? order.email}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                {order.customerName ?? order.email}
+              </p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -123,8 +148,11 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
               <div className="space-y-3">
                 {order.products?.length ? (
                   order.products.map((product, idx) => {
-                    const prod = product?.product ?? {};
+                    // Cast to ProductItem so TS knows the expected shape.
+                    const prod = (product?.product ?? {}) as ProductItem;
                     const qty = product?.quantity ?? 1;
+
+                    // images
                     const img = Array.isArray(prod.images) && prod.images.length ? prod.images[0] : null;
                     let imgUrl = "";
                     try {
@@ -133,6 +161,13 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
                       imgUrl = "";
                     }
 
+                    const displayName = prod.name ?? "Unnamed product";
+                    const slugCurrent = prod.slug?.current;
+                    const unitPrice =
+                      typeof prod.price === "number"
+                        ? prod.price
+                        : Number(prod.price ?? 0);
+
                     return (
                       <div
                         key={idx}
@@ -140,7 +175,8 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
                       >
                         <div className="w-20 h-20 rounded-md overflow-hidden bg-white flex items-center justify-center shrink-0">
                           {imgUrl ? (
-                            <img src={imgUrl} alt={prod.name ?? "product"} className="w-full h-full object-cover" />
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={imgUrl} alt={displayName} className="w-full h-full object-cover" />
                           ) : (
                             <div className="text-xs text-gray-400">No image</div>
                           )}
@@ -148,9 +184,9 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
 
                         <div className="flex-1 flex items-center justify-between gap-4">
                           <div>
-                            <div className="font-medium text-sm">{prod.name ?? "Unnamed product"}</div>
-                            {prod.slug?.current && (
-                              <Link href={`/product/${prod.slug.current}`} className="text-sm text-sky-600">
+                            <div className="font-medium text-sm">{displayName}</div>
+                            {slugCurrent && (
+                              <Link href={`/product/${slugCurrent}`} className="text-sm text-sky-600">
                                 View product
                               </Link>
                             )}
@@ -159,7 +195,7 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
                           <div className="text-right">
                             <div className="text-sm text-gray-600">Qty: {qty}</div>
                             <div className="text-sm font-semibold">
-                              <PriceFormater amount={Number((prod.price ?? 0) * qty)} />
+                              <PriceFormater amount={Number(unitPrice * qty)} />
                             </div>
                           </div>
                         </div>
@@ -167,7 +203,9 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
                     );
                   })
                 ) : (
-                  <div className="p-3 text-sm text-gray-600 rounded-md bg-white border">No items recorded for this order.</div>
+                  <div className="p-3 text-sm text-gray-600 rounded-md bg-white border">
+                    No items recorded for this order.
+                  </div>
                 )}
               </div>
             </section>
@@ -192,12 +230,6 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
                   <PriceFormater amount={order.totalPrice ?? 0} />
                 </div>
 
-                {order.razorpayPaymentId && (
-                  <div className="text-xs text-gray-600">
-                    <strong>Payment ID: </strong>{order.razorpayPaymentId}
-                  </div>
-                )}
-
                 {order.orderDate && (
                   <div className="text-xs text-gray-500">
                     Ordered: {new Date(order.orderDate).toLocaleString()}
@@ -215,7 +247,9 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
                 <div className="text-sm text-gray-700 space-y-1">
                   <div>{order.address.name}</div>
                   <div>{order.address.address}</div>
-                  <div>{order.address.city}, {order.address.state} {order.address.zip}</div>
+                  <div>
+                    {order.address.city}, {order.address.state} {order.address.zip}
+                  </div>
                 </div>
               ) : (
                 <div className="text-sm text-gray-600">No shipping address recorded.</div>
@@ -229,8 +263,12 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
                 <div className="text-sm text-gray-600">{order.email}</div>
 
                 <div className="mt-3 flex gap-2">
-                  <Link href="/" className="px-3 py-1 bg-slate-800 text-white rounded-md text-sm">Continue shopping</Link>
-                  <Link href="/orders" className="px-3 py-1 border rounded-md text-sm">View all orders</Link>
+                  <Link href="/" className="px-3 py-1 bg-slate-800 text-white rounded-md text-sm">
+                    Continue shopping
+                  </Link>
+                  <Link href="/orders" className="px-3 py-1 border rounded-md text-sm">
+                    View all orders
+                  </Link>
                 </div>
               </div>
             </div>
