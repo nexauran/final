@@ -1,4 +1,6 @@
+import { SINGLE_BLOG_QUERYResult } from "@/sanity.types";
 import { defineQuery } from "next-sanity";
+import { client } from "../lib/client";
 
 const BRANDS_QUERY = defineQuery(`*[_type=='brand'] | order(name asc) `);
 
@@ -42,17 +44,23 @@ const GET_ALL_BLOG = defineQuery(
 );
 
 const SINGLE_BLOG_QUERY =
-  defineQuery(`*[_type == "blog" && slug.current == $slug]{
-  ..., 
+  defineQuery(`*[_type == "blog" && slug.current == $slug][0]{
+    ...,
     author->{
-    name,
-    image,
-  },
-  blogcategories[]->{
-    title,
-    "slug": slug.current,
-  },
-}`);
+      name,
+      image,
+    },
+    blogcategories[]->{
+      title,
+      "slug": slug.current,
+    },
+  }`);
+
+// data fetching
+export async function getSingleBlog(slug: string): Promise<SINGLE_BLOG_QUERYResult> {
+  // note fetch generic matches nullable result
+  return client.fetch<SINGLE_BLOG_QUERYResult>(SINGLE_BLOG_QUERY, { slug });
+}
 
 const BLOG_CATEGORIES = defineQuery(
   `*[_type == "blog"]{

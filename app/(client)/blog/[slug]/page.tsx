@@ -17,12 +17,13 @@ import React from "react";
 
 const SingleBlogPage = async ({
   
+  
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) => {
   const { slug } = await params;
-  const blog: SINGLE_BLOG_QUERYResult = await getSingleBlog(slug);
+  const blog: SINGLE_BLOG_QUERYResult | null = await getSingleBlog(slug);
   if (!blog) return notFound();
   
 
