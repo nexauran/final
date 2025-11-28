@@ -42,7 +42,7 @@ const GET_ALL_BLOG = defineQuery(
 );
 
 const SINGLE_BLOG_QUERY =
-  defineQuery(`*[_type == "blog" && slug.current == $slug][0]{
+  defineQuery(`*[_type == "blog" && slug.current == $slug]{
   ..., 
     author->{
     name,
@@ -53,7 +53,6 @@ const SINGLE_BLOG_QUERY =
     "slug": slug.current,
   },
 }`);
-
 
 const BLOG_CATEGORIES = defineQuery(
   `*[_type == "blog"]{
