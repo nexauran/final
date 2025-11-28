@@ -7,10 +7,14 @@ import Footer from "@/components/Footer";
 import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
-  title: "%s - Nexaura online store",
-  default: "Nexaura online store",
+  title: {
+    template: "%s - Nexaura online store",
+    default: "Nexaura online store",
+  },
   description: "Enhance your future with us",
 };
+
+
 
 export default function RootLayout({
   children,
