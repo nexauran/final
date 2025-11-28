@@ -43,19 +43,7 @@ type AddressDoc = {
   createdAt?: string;
 };
 
-type Product = {
-  _id?: string;
-  name?: string;
-  slug?: { current?: string };
-  images?: any[];
-  price?: number;
-  variant?: string;
-  status?: string;
-};
 
-type GroupedItem = {
-  product?: Product;
-};
 
 /**
  * Helpers: safe extractors for Clerk user fields
@@ -114,8 +102,8 @@ const CartPage: React.FC = () => {
     getGroupedItems,
   } = useStore() as any;
 
-  const [loading, setLoading] = useState<boolean>(false);
-  const groupedItems: GroupedItem[] = (getGroupedItems?.() as GroupedItem[]) ?? [];
+  const [loading, setLoading] = useState(false);
+    const groupedItems = useStore((state) => state.getGroupedItems());
   const { isSignedIn } = useAuth();
   const { user } = useUser();
   const [addresses, setAddresses] = useState<AddressDoc[] | null>(null);
@@ -482,7 +470,7 @@ const CartPage: React.FC = () => {
                           </div>
                           <div className="flex flex-col items-start justify-between h-36 md:h-44 p-0.5 md:p-1">
                             <PriceFormater
-                              amount={(product?.price ?? 0) * itemCount}
+                              amount={(product?.price as number) * itemCount}
                               className="font-bold text-lg"
                             />
                             <QuantityButton product={product} />
