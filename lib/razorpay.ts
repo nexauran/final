@@ -9,7 +9,7 @@ const razorpay = new Razorpay({
 // 1. CREATE PAYMENT LINK
 // -------------------------------
 export async function createPaymentLink(amount: number, customer: any) {
-  const res = await razorpay.payment_links.create({
+  const res = await razorpay.paymentLink.create({
     amount: amount * 100,
     currency: "INR",
     customer: {
@@ -32,7 +32,7 @@ export async function createPaymentLink(amount: number, customer: any) {
 // 2. FETCH ONE PAYMENT LINK
 // -------------------------------
 export async function fetchPaymentLink(paymentLinkId: string) {
-  const res = await razorpay.payment_links.fetch(paymentLinkId);
+  const res = await razorpay.paymentLink.fetch(paymentLinkId);
   return res;
 }
 
@@ -40,7 +40,7 @@ export async function fetchPaymentLink(paymentLinkId: string) {
 // 3. LIST PAYMENT LINKS
 // -------------------------------
 export async function listPaymentLinks(limit = 10, skip = 0) {
-  const res = await razorpay.payment_links.all({
+  const res = await razorpay.paymentLink.all({
     count: limit,
     skip,
   });
