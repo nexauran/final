@@ -1,4 +1,3 @@
-// components/CartPage.tsx
 "use client";
 
 import Container from "@/components/Container";
@@ -42,7 +41,6 @@ type AddressDoc = {
   publishedAt?: string;
   createdAt?: string;
 };
-
 
 
 /**
@@ -111,6 +109,18 @@ const CartPage: React.FC = () => {
 
   // controlled radio value
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+
+  // --- Shipping configuration ---
+  // Flat shipping fee (INR). Adjust as needed.
+  const SHIPPING_FEE = 59;
+  // Optional: free shipping over this subtotal amount
+  const FREE_SHIPPING_THRESHOLD = 699;
+
+  const computeShipping = (productsTotal: number) => {
+    if (!productsTotal || productsTotal <= 0) return 0;
+    return productsTotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
+  };
+  // ------------------------------------------------------------------------
 
   // --- UPDATED: fetch only addresses for current logged-in user's email ---
   const fetchAddresses = async () => {
@@ -209,8 +219,13 @@ const CartPage: React.FC = () => {
         };
       });
 
-      const totalAmount = getTotalPrice();
-      if (!totalAmount || totalAmount <= 0) {
+      const subtotal = getSubTotalPrice();
+      const shippingCharge = computeShipping(subtotal);
+      // getTotalPrice() previously represented subtotal - discount; include shipping in final amount
+      const productsTotal = getTotalPrice();
+      const finalTotal = Math.round((productsTotal ?? 0) + shippingCharge);
+
+      if (!finalTotal || finalTotal <= 0) {
         toast.error("Cart is empty or invalid total.");
         setLoading(false);
         return;
@@ -237,7 +252,9 @@ const CartPage: React.FC = () => {
         clerkUserId: (user as any)?.id ?? (user as any)?.userId ?? "unknown",
         products: itemsPayload,
         address: selectedAddress ?? {},
-        totalPrice: totalAmount,
+        subtotal: subtotal,
+        shippingCharge: shippingCharge,
+        totalPrice: finalTotal,
         currency: "INR",
         amountDiscount: Number((getSubTotalPrice() - getTotalPrice()) || 0),
       };
@@ -269,7 +286,7 @@ const CartPage: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderNumber,
-          amount: Math.round(getTotalPrice()),
+          amount: finalTotal, // include shipping
           currency: "INR",
         }),
       });
@@ -280,7 +297,7 @@ const CartPage: React.FC = () => {
       if (!rzpJson?.id || !rzpJson?.keyId) {
         if (createJson.razorpayOrder && createJson.razorpayOrder.id && createJson.razorpayOrder.keyId) {
           rzpJson.id = createJson.razorpayOrder.id;
-          rzpJson.amount = createJson.razorpayOrder.amount ?? Math.round(getTotalPrice());
+          rzpJson.amount = createJson.razorpayOrder.amount ?? finalTotal;
           rzpJson.currency = createJson.razorpayOrder.currency ?? "INR";
           rzpJson.keyId = createJson.razorpayOrder.keyId;
         } else {
@@ -304,7 +321,7 @@ const CartPage: React.FC = () => {
       // 4) Open Razorpay Checkout
       const options: any = {
         key: rzpJson.keyId,
-        amount: rzpJson.amount ?? Math.round(getTotalPrice()),
+        amount: rzpJson.amount ?? finalTotal,
         currency: rzpJson.currency ?? "INR",
         name: "Your Shop",
         description: `Order ${orderNumber}`,
@@ -380,6 +397,12 @@ const CartPage: React.FC = () => {
     }
   };
 
+  // Helper to compute values for display
+  const displaySubTotal = getSubTotalPrice();
+  const displayProductsTotal = getTotalPrice();
+  const displayShipping = computeShipping(displayProductsTotal);
+  const displayFinalTotal = Math.round((displayProductsTotal ?? 0) + displayShipping);
+
   return (
     <div className="bg-gray-50 pb-52 md:pb-10">
       {isSignedIn ? (
@@ -425,13 +448,13 @@ const CartPage: React.FC = () => {
                                   {product?.name ?? ""}
                                 </h2>
                                 <p className="text-sm capitalize">
-                                  Variant:{" "}
+                                  Variant: {" "}
                                   <span className="font-semibold">
                                     {product?.variant ?? ""}
                                   </span>
                                 </p>
                                 <p className="text-sm capitalize">
-                                  Status:{" "}
+                                  Status: {" "}
                                   <span className="font-semibold">
                                     {product?.status ?? ""}
                                   </span>
@@ -491,16 +514,20 @@ const CartPage: React.FC = () => {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <span>SubTotal</span>
-                          <PriceFormater amount={getSubTotalPrice()} />
+                          <PriceFormater amount={displaySubTotal} />
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Discount</span>
-                          <PriceFormater amount={getSubTotalPrice() - getTotalPrice()} />
+                          <PriceFormater amount={displaySubTotal - displayProductsTotal} />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Shipping</span>
+                          <PriceFormater amount={displayShipping} />
                         </div>
                         <Separator />
                         <div className="flex items-center justify-between font-semibold text-lg">
                           <span>Total</span>
-                          <PriceFormater amount={getTotalPrice()} className="text-lg font-bold text-black" />
+                          <PriceFormater amount={displayFinalTotal} className="text-lg font-bold text-black" />
                         </div>
                         <Button
                           className="w-full rounded-full font-semibold tracking-wide hoverEffect"
@@ -569,16 +596,20 @@ const CartPage: React.FC = () => {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <span>SubTotal</span>
-                        <PriceFormater amount={getSubTotalPrice()} />
+                        <PriceFormater amount={displaySubTotal} />
                       </div>
                       <div className="flex items-center justify-between">
                         <span>Discount</span>
-                        <PriceFormater amount={getSubTotalPrice() - getTotalPrice()} />
+                        <PriceFormater amount={displaySubTotal - displayProductsTotal} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Shipping</span>
+                        <PriceFormater amount={displayShipping} />
                       </div>
                       <Separator />
                       <div className="flex items-center justify-between font-semibold text-lg">
                         <span>Total</span>
-                        <PriceFormater amount={getTotalPrice()} className="text-lg font-bold text-black" />
+                        <PriceFormater amount={displayFinalTotal} className="text-lg font-bold text-black" />
                       </div>
                       <Button
                         className="w-full rounded-full font-semibold tracking-wide hoverEffect"

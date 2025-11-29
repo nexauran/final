@@ -1,4 +1,3 @@
-// app/order/confirm/page.tsx
 import React from "react";
 import Link from "next/link";
 import { client } from "@/sanity/lib/client";
@@ -59,6 +58,8 @@ export default async function OrderConfirmPage({
     totalPrice,
     currency,
     amountDiscount,
+    subtotal,
+    shippingCharge,
     address,
     orderDate,
     paymentDate,
@@ -104,6 +105,8 @@ export default async function OrderConfirmPage({
     totalPrice,
     currency,
     amountDiscount,
+    subtotal,
+    shippingCharge,
     address,
     orderDate,
     paymentDate,
@@ -113,6 +116,36 @@ export default async function OrderConfirmPage({
   } = order as any;
 
   const items = Array.isArray(products) ? (products as any[]) : [];
+
+  // Compute fallback subtotal if not present (sum product price * qty)
+  const computedSubtotal =
+    typeof subtotal === "number"
+      ? subtotal
+      : items.reduce((acc, it) => {
+          const prod = it.product ?? {};
+          const price = typeof prod.price === "number" ? prod.price : Number(prod.price ?? 0);
+          const qty = Number(it.quantity ?? 1);
+          return acc + price * qty;
+        }, 0);
+
+  // Discounts
+  const displayDiscount = typeof amountDiscount === "number" ? amountDiscount : 0;
+
+  // --- Shipping logic (same as cart): ₹59, free for orders >= ₹699 after discount ---
+  const SHIPPING_FEE = 59;
+  const FREE_SHIPPING_THRESHOLD = 699;
+
+  // productsTotal is subtotal after discount (what we apply free-shipping threshold against)
+  const productsTotal = Math.max(0, computedSubtotal - displayDiscount);
+
+  // If the order record already has shippingCharge, prefer that. Otherwise compute using the same rule.
+  const displayShipping = typeof shippingCharge === "number" ? shippingCharge : productsTotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
+
+  // Total: prefer stored totalPrice, otherwise compute from parts
+  const displayTotal = typeof totalPrice === "number" ? totalPrice : Math.round(productsTotal + displayShipping);
+
+  // Helper for WhatsApp / labels
+  const shippingLabelForWA = displayShipping === 0 ? "FREE" : String(displayShipping);
 
   // --- Build WhatsApp URL server-side (only shown for paid orders) ---
   // Change to your phone number (no +, no spaces)
@@ -125,17 +158,15 @@ export default async function OrderConfirmPage({
           const prod = it.product ?? {};
           const name = prod.name ?? "Item";
           const qty = it.quantity ?? 1;
-          // In this page we assume prod.price is already in rupees (as used by PriceFormater here)
           const price = typeof prod.price === "number" ? (prod.price * (it.quantity ?? 1)).toString() : String(prod.price ?? "N/A");
           return `${name} x${qty} (${price})`;
         })
         .join(", ")
     : "No items";
 
-  // totalPrice is shown by PriceFormater (do not change units here)
-  const totalStr = typeof totalPrice === "number" ? String(totalPrice) : String(totalPrice ?? "N/A");
+  const totalStr = String(displayTotal ?? "N/A");
 
-  const waMessage = `Hello, I need help with my order.%0AOrder ID: ${orderNumber}%0ATotal: ${totalStr} ${currency ?? ""}%0AItems: ${itemsSummary}%0ACustomer: ${customerName ?? email ?? ""}`;
+  const waMessage = `Hello, I need help with my order.%0AOrder ID: ${orderNumber}%0ASubtotal: ${computedSubtotal}%0AAfter discount: ${productsTotal}%0AShipping: ${shippingLabelForWA}%0ADiscount: ${displayDiscount}%0ATotal: ${totalStr} ${currency ?? ""}%0AItems: ${itemsSummary}%0ACustomer: ${customerName ?? email ?? ""}`;
 
   // Note: we already percent-encoded newlines using %0A; keep it simple and safe for server rendering
   const waUrl = `https://wa.me/${WHATSAPP_PHONE}?text=${waMessage}`;
@@ -216,17 +247,26 @@ export default async function OrderConfirmPage({
               <div className="text-sm text-gray-700 mb-2">Subtotal</div>
               <div className="flex items-center justify-between mb-1">
                 <span>Items total</span>
-                <PriceFormater amount={totalPrice ?? 0} />
+                <PriceFormater amount={computedSubtotal ?? 0} />
+              </div>
+
+              <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+                <span>Discount</span>
+                <PriceFormater amount={displayDiscount ?? 0} />
               </div>
 
               <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                <span>Discount</span>
-                <PriceFormater amount={amountDiscount ?? 0} />
+                <span>Shipping</span>
+                {displayShipping === 0 ? (
+                  <span className="font-semibold">FREE</span>
+                ) : (
+                  <PriceFormater amount={displayShipping ?? 0} />
+                )}
               </div>
 
               <div className="border-t pt-3 mt-3 font-semibold text-lg flex items-center justify-between">
                 <span>Total</span>
-                <PriceFormater amount={totalPrice ?? 0} className="text-lg" />
+                <PriceFormater amount={displayTotal ?? 0} className="text-lg" />
               </div>
 
               <div className="mt-4 text-sm">

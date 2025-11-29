@@ -34,9 +34,6 @@ interface ProductImage {
   // Minimal shape to pass into urlFor. If your images have other properties add them here.
   _type?: string;
   asset?: any;
-  // You may add hotspot/crop if you use them
-  // hotspot?: any;
-  // crop?: any;
 }
 
 interface ProductItem {
@@ -44,7 +41,6 @@ interface ProductItem {
   name?: string | null;
   slug?: Slug | null;
   price?: number | string | null;
-  // any other fields you expect can be added here
 }
 
 const OrderDetailDialog: React.FC<OrderDetailsDialogProps> = ({
@@ -54,17 +50,43 @@ const OrderDetailDialog: React.FC<OrderDetailsDialogProps> = ({
 }) => {
   if (!order) return null;
 
+  // --- Compute subtotal (fallback) ---
+  const items = order.products ?? [];
+  const computedSubtotal = typeof (order as any).subtotal === "number"
+    ? (order as any).subtotal
+    : (items as any[]).reduce((acc, it) => {
+        const prod = (it?.product ?? {}) as ProductItem;
+        const price = typeof prod.price === "number" ? prod.price : Number(prod.price ?? 0);
+        const qty = Number(it?.quantity ?? 1);
+        return acc + price * qty;
+      }, 0);
+
+  const displayDiscount = typeof order.amountDiscount === "number" ? order.amountDiscount : 0;
+
+  // --- Shipping logic: same as cart ---
+  const SHIPPING_FEE = 59;
+  const FREE_SHIPPING_THRESHOLD = 699;
+
+  const productsTotal = Math.max(0, computedSubtotal - displayDiscount);
+
+  const displayShipping = typeof (order as any).shippingCharge === "number"
+    ?  (order as any).shippingCharge
+    : productsTotal >= FREE_SHIPPING_THRESHOLD
+      ? 0
+      : SHIPPING_FEE;
+
+  const displayTotal = typeof order.totalPrice === "number"
+    ? order.totalPrice
+    : Math.round(productsTotal + displayShipping);
+
   // 🔥 Build WhatsApp message dynamically
   const buildWhatsAppMessage = useCallback(() => {
     const orderId = order.orderNumber ?? order._id ?? "Unknown";
 
-    const total =
-      typeof order.totalPrice === "number"
-        ? order.totalPrice.toFixed(2)
-        : String(order.totalPrice ?? "N/A");
+    const total = typeof displayTotal === "number" ? displayTotal.toString() : String(displayTotal ?? "N/A");
 
-    const items =
-      order.products
+    const itemsStr =
+      (order.products
         ?.map((p) => {
           const name = (p?.product as ProductItem)?.name ?? "Item";
           const qty = p?.quantity ?? 1;
@@ -74,16 +96,22 @@ const OrderDetailDialog: React.FC<OrderDetailsDialogProps> = ({
               : String((p?.product as ProductItem)?.price ?? "N/A");
           return `${name} x${qty} (${priceValue})`;
         })
-        .join(", ") || "No items";
+        .join(", ")) || "No items";
+
+    const shippingLabel = displayShipping === 0 ? "FREE" : String(displayShipping);
 
     const message = `Hello, I need help with my order.
 Order ID: ${orderId}
+Subtotal: ${computedSubtotal}
+After discount: ${productsTotal}
+Shipping: ${shippingLabel}
+Discount: ${displayDiscount}
 Total: ${total}
-Items: ${items}
+Items: ${itemsStr}
 Customer: ${order.customerName ?? order.email ?? ""}`;
 
     return encodeURIComponent(message);
-  }, [order]);
+  }, [order, computedSubtotal, productsTotal, displayShipping, displayDiscount, displayTotal]);
 
   // 🔥 WhatsApp button action
   const handleWhatsAppClick = useCallback(() => {
@@ -148,11 +176,9 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
               <div className="space-y-3">
                 {order.products?.length ? (
                   order.products.map((product, idx) => {
-                    // Cast to ProductItem so TS knows the expected shape.
                     const prod = (product?.product ?? {}) as ProductItem;
                     const qty = product?.quantity ?? 1;
 
-                    // images
                     const img = Array.isArray(prod.images) && prod.images.length ? prod.images[0] : null;
                     let imgUrl = "";
                     try {
@@ -163,10 +189,7 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
 
                     const displayName = prod.name ?? "Unnamed product";
                     const slugCurrent = prod.slug?.current;
-                    const unitPrice =
-                      typeof prod.price === "number"
-                        ? prod.price
-                        : Number(prod.price ?? 0);
+                    const unitPrice = typeof prod.price === "number" ? prod.price : Number(prod.price ?? 0);
 
                     return (
                       <div
@@ -175,7 +198,6 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
                       >
                         <div className="w-20 h-20 rounded-md overflow-hidden bg-white flex items-center justify-center shrink-0">
                           {imgUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={imgUrl} alt={displayName} className="w-full h-full object-cover" />
                           ) : (
                             <div className="text-xs text-gray-400">No image</div>
@@ -217,23 +239,30 @@ Customer: ${order.customerName ?? order.email ?? ""}`;
               <div className="text-sm text-gray-700 space-y-3">
                 <div className="flex items-center justify-between">
                   <span>Items total</span>
-                  <PriceFormater amount={order.totalPrice ?? 0} />
+                  <PriceFormater amount={computedSubtotal ?? 0} />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span>Discount</span>
-                  <PriceFormater amount={order.amountDiscount ?? 0} />
+                  <PriceFormater amount={displayDiscount ?? 0} />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span>Shipping</span>
+                  {displayShipping === 0 ? (
+                    <span className="font-semibold text-green-600">FREE</span>
+                  ) : (
+                    <PriceFormater amount={displayShipping ?? 0} />
+                  )}
                 </div>
 
                 <div className="border-t pt-3 mt-3 flex items-center justify-between font-semibold text-lg">
                   <span>Total</span>
-                  <PriceFormater amount={order.totalPrice ?? 0} />
+                  <PriceFormater amount={displayTotal ?? 0} />
                 </div>
 
                 {order.orderDate && (
-                  <div className="text-xs text-gray-500">
-                    Ordered: {new Date(order.orderDate).toLocaleString()}
-                  </div>
+                  <div className="text-xs text-gray-500">Ordered: {new Date(order.orderDate).toLocaleString()}</div>
                 )}
               </div>
             </aside>
